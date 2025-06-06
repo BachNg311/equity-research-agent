@@ -1,0 +1,46 @@
+{
+    "Technology": {
+        "P/E": 36.070854,
+        "P/B": 1.546048
+    },
+    "Financials": {
+        "P/E": 17.390886,
+        "P/B": 1.4980745
+    },
+    "Health Care": {
+        "P/E": 23.896397,
+        "P/B": 1.0423084
+    },
+    "Consumer Discretionary": {
+        "P/E": 27.454489,
+        "P/B": 1.2726948
+    },
+    "Consumer Staples": {
+        "P/E": 23.41889,
+        "P/B": 1.2149259
+    },
+    "Industrials": {
+        "P/E": 25.802843,
+        "P/B": 1.4516883
+    },
+    "Energy": {
+        "P/E": 14.655233,
+        "P/B": 1.5644248
+    },
+    "Materials": {
+        "P/E": 25.472979,
+        "P/B": 1.0913365
+    },
+    "Utilities": {
+        "P/E": 21.298756,
+        "P/B": 1.2802
+    },
+    "Real Estate": {
+        "P/E": 35.62194,
+        "P/B": null
+    },
+    "Communication Services": {
+        "P/E": 19.658958,
+        "P/B": null
+    }
+}

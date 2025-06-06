@@ -1,0 +1,145 @@
+Average P/E and P/B Ratios by Industry (Vietnam, Q2 2025):
+
+Banking and Finance:
+    P/E: 7.93
+    P/B: 1.32
+
+Securities and Investment Banking:
+    P/E: 18.33
+    P/B: 1.61
+
+Insurance:
+    P/E: 10.97
+    P/B: 1.14
+
+Real Estate:
+    P/E: 19.94
+    P/B: 1.90
+
+Transport Infrastructure:
+    P/E: 13.01
+    P/B: 2.14
+
+Construction:
+    P/E: 17.91
+    P/B: 2.07
+
+Passenger Transportation:
+    P/E: 11.76
+    P/B: -11.16
+
+Machinery, Heavy Equipment, and Shipbuilding:
+    P/E: 11.07
+    P/B: 2.44
+
+Freight and Logistics:
+    P/E: 11.28
+    P/B: 1.88
+
+Food and Tobacco:
+    P/E: 12.72
+    P/B: 2.63
+
+Food and Drug Retail:
+    P/E: 16.29
+    P/B: 8.10
+
+Beverages:
+    P/E: 15.28
+    P/B: 2.42
+
+Personal and Household Products:
+    P/E: 8.96
+    P/B: 2.41
+
+Telecommunications Services:
+    P/E: 15.26
+    P/B: 4.38
+
+Software and IT Services:
+    P/E: 20.60
+    P/B: 5.16
+
+Media and Networking:
+    P/E: 20.07
+    P/B: 0.62
+
+Metals and Mining:
+    P/E: 15.37
+    P/B: 2.82
+
+Chemicals:
+    P/E: 11.27
+    P/B: 2.10
+
+Building Materials:
+    P/E: 14.75
+    P/B: 1.27
+
+Paper and Forestry Products:
+    P/E: 18.67
+    P/B: 1.18
+
+Containers and Packaging:
+    P/E: 11.53
+    P/B: 0.93
+
+Specialty Retail:
+    P/E: 18.10
+    P/B: 2.76
+
+Automobiles and Auto Parts:
+    P/E: 12.77
+    P/B: 1.27
+
+Civil Construction and Building Materials:
+    P/E: 13.58
+    P/B: 2.47
+
+Textiles and Garments:
+    P/E: 8.14
+    P/B: 1.15
+
+Household Goods:
+    P/E: 10.88
+    P/B: 1.19
+
+Media and Publishing:
+    P/E: 9.07
+    P/B: 0.86
+
+Hotels and Entertainment:
+    P/E: 15.11
+    P/B: 1.79
+
+Oil and Gas:
+    P/E: 15.53
+    P/B: 2.10
+
+Coal:
+    P/E: 7.40
+    P/B: 1.01
+
+Renewable Energy:
+    P/E: 3.63
+    P/B: 2.20
+
+Electricity:
+    P/E: 12.94
+    P/B: 1.80
+
+Water Supply and Sewerage:
+    P/E: 10.67
+    P/B: 1.87
+
+Pharmaceuticals:
+    P/E: 15.45
+    P/B: 2.46
+
+Healthcare Services:
+    P/E: -397.91
+    P/B: 2.02
+
+Medical Equipment and Supplies:
+    P/E: 40.34
+    P/B: 1.47

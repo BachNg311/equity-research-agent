@@ -1,0 +1,77 @@
+news_collecting:
+  description: >
+    Collect the most relevant macroeconomic developments, fiscal/monetary policy updates,
+    and market-moving news in the U.S. from the past 3 months (as of {current_date}).
+    Use authoritative sources such as The Wall Street Journal, Bloomberg, Reuters, and the U.S. Federal Reserve website.
+
+    Select and summarize the 5 most impactful news items that could influence U.S. equity markets broadly
+    or sector-specific stocks. Emphasize implications for market trends, investor sentiment, and key indices
+    (S&P 500, Nasdaq, etc.).
+
+  expected_output: >
+    A 3-page report in English summarizing 5 key macroeconomic or policy-related news articles, each with:
+    - Source link
+    - 1-paragraph analysis explaining its relevance and projected impact on the U.S. equity market (or sectors)
+    - Focus on how these developments could shape valuation, liquidity, or sentiment
+
+  agent: stock_news_researcher
+
+fundamental_analysis:
+  description: >
+    Perform an in-depth fundamental analysis of U.S. stock symbol {symbol} as of {current_date}.
+
+    Include metrics: P/E, P/B, ROE, D/E, EPS, EV/EBITDA, profit margin, and revenue/profit growth (last 4 quarters).
+    Determine the stock’s sector and compare P/E and P/B to the industry average from U.S. benchmarks
+    (or a close peer group if sector data is unavailable).
+
+    Assess whether the stock appears undervalued, overvalued, or fairly priced, considering valuation ratios,
+    financial health, and earnings performance.
+
+  expected_output: >
+    A detailed 3-page English report containing:
+    - Summary of the company’s business and sector classification
+    - Detailed table of financial ratios and trend discussion
+    - Peer/industry valuation comparison
+    - Investment assessment: undervalued, fairly valued, or overvalued with justification
+
+  agent: fundamental_analyst
+
+technical_analysis:
+  description: >
+    Conduct a technical analysis of stock {symbol} as of {current_date} using indicators such as:
+    - Moving Averages (20/50/200-day SMA and EMA)
+    - RSI (14)
+    - MACD and Signal Line
+    - Bollinger Bands
+    - Support and resistance levels
+
+    Evaluate short-term and long-term trends, potential breakout or breakdown zones, and price momentum.
+
+  expected_output: >
+    A 3-page English technical analysis report covering:
+    - Visual or tabular presentation of indicator values
+    - Trend analysis (uptrend/downtrend/sideways)
+    - Commentary on price momentum, volatility, and key levels to watch
+    - Short-term and medium-term trading outlook
+
+  agent: technical_analyst
+
+investment_decision:
+  description: >
+    Based on the aggregated output of the news, fundamental, and technical analyses,
+    make an investment recommendation for stock {symbol} as of {current_date}.
+
+    Decide whether to Buy, Hold, or Sell. Justify using a synthesis of macroeconomic conditions,
+    valuation, earnings, and price trend.
+
+    If the recommendation is “Hold,” specify the key signals or conditions (e.g., earnings beats,
+    technical breakout) that would justify a Buy/Sell in the near future.
+
+  expected_output: >
+    A clear English investment decision (Buy/Hold/Sell) with a 3 page explanation that includes:
+    - Summary of each analytical component (macro, fundamental, technical)
+    - Overall investment thesis
+    - Conditions to monitor (if "Hold")
+    - Suggested entry/exit price range if applicable
+
+  agent: investment_strategist
