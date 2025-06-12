@@ -1,38 +1,32 @@
 from __future__ import annotations
-
-"""Custom tools for US equity analysis – fundamental & technical.
-
-These tools are designed to plug‑and‑play with CrewAI.
-They replace the original VN‑specific implementation (based on `vnstock`) with
-universally available U.S. data sources via Yahoo Finance (`yfinance`).
-All public free endpoints – no API keys required.
-"""
-
-from typing import Any, Optional, Type
-
+from pathlib import Path
+from typing import Any, Dict, List, Literal, Optional, Type
 import numpy as np
 import pandas as pd
 import yfinance as yf
 from crewai.tools import BaseTool
 from datetime import datetime, timedelta
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+import matplotlib
+import matplotlib.pyplot as plt
+import requests
+import os
+import json
+matplotlib.use("Agg")  
 
-###############################################################################
-# ────────────────────────────── Shared schema ────────────────────────────── #
-###############################################################################
+"""
+Custom tools for US equity analysis – fundamental & technical.
+"""
 
 
+# Stock Input  
 class USStockInput(BaseModel):
     """Input schema for US stock tools."""
 
     ticker: str = Field(..., description="U.S. stock ticker symbol (e.g. AAPL).")
 
 
-###############################################################################
-# ─────────────────────────── Fundamental data tool ────────────────────────── #
-###############################################################################
-
-
+# US Fundamental Data Tool
 class USFundDataTool(BaseTool):
     """Fetch quarterly fundamentals & key ratios for U.S. equities via yfinance."""
 
@@ -44,81 +38,72 @@ class USFundDataTool(BaseTool):
     )
     args_schema: Type[BaseModel] = USStockInput
 
-    ###########################################################################
 
-    def _run(self, ticker: str) -> str:  # noqa: D401 – CrewAI naming convention
+    def _run(self, ticker: str) -> str:  
         try:
-            tk = yf.Ticker(ticker.upper())
+            stock = yf.Ticker(ticker)
+            info = stock.info
 
-            # Basic info & sector/industry
-            info = tk.info or {}
-            long_name = info.get("longName") or info.get("shortName", "N/A")
-            industry = info.get("industry", "N/A")
+            # Company info
+            full_name = info.get("longName", "N/A")
             sector = info.get("sector", "N/A")
+            industry = info.get("industry", "N/A")
 
-            # Recent valuation ratios (some keys may be missing)
+            # Financial ratios
             pe_ratio = info.get("trailingPE", "N/A")
             pb_ratio = info.get("priceToBook", "N/A")
             roe = info.get("returnOnEquity", "N/A")
             roa = info.get("returnOnAssets", "N/A")
             eps = info.get("trailingEps", "N/A")
-            # Debt/Equity ratio isn't directly provided – approximate from balance‑sheet
-            try:
-                bs = tk.quarterly_balance_sheet  # columns are dates, rows are items
-                total_debt = bs.loc["Total Debt"].iloc[0]
-                total_equity = bs.loc["Total Stockholder Equity"].iloc[0]
-                de_ratio = total_debt / total_equity if total_equity else np.nan
-            except Exception:
-                de_ratio = np.nan
-
-            # EV/EBITDA (ttm) – yfinance keys
-            evebitda = info.get("enterpriseToEbitda", "N/A")
+            de = info.get("debtToEquity", "N/A")
             profit_margin = info.get("profitMargins", "N/A")
+            evebitda = info.get("enterpriseToEbitda", "N/A")
 
-            # Last 4 quarters income statement
-            inc = tk.quarterly_income_stmt  # rows × columns (item × date)
-            last_4 = inc.iloc[:, :4].T  # flip to (date × item)
+            # Quarterly income trends (use financials if available)
+            try:
+                income_stmt = stock.quarterly_financials
+                revenue = income_stmt.loc['Total Revenue'].tolist()
+                gross_profit = income_stmt.loc['Gross Profit'].tolist()
+                net_income = income_stmt.loc['Net Income'].tolist()
+                quarters = income_stmt.columns.tolist()
+            except Exception:
+                revenue = gross_profit = net_income = quarters = []
 
-            quarterly_trends: list[str] = []
-            for i, (idx, row) in enumerate(last_4.iterrows(), 1):
-                rev = row.get("Total Revenue", np.nan)
-                gp = row.get("Gross Profit", np.nan)
-                npi = row.get("Net Income", np.nan)
+            quarterly_trends = []
+            for i in range(min(4, len(quarters))):
+                rev = f"${revenue[i]:,.0f}" if i < len(revenue) and revenue[i] else "N/A"
+                gp = f"${gross_profit[i]:,.0f}" if i < len(gross_profit) and gross_profit[i] else "N/A"
+                ni = f"${net_income[i]:,.0f}" if i < len(net_income) and net_income[i] else "N/A"
 
-                fm = lambda x: f"${x:,.0f}" if pd.notna(x) else "N/A"  # noqa: E731
-                quarterly_trends.append(
-                    f"Quarter T‑{i}:\n"
-                    f"  • Revenue: {fm(rev)}\n"
-                    f"  • Gross Profit: {fm(gp)}\n"
-                    f"  • Net Income: {fm(npi)}\n"
-                )
+                quarter_info = f"""
+Quarter T-{i + 1} ({quarters[i].strftime('%Y-%m-%d')}):
+- Revenue: {rev}
+- Gross Profit: {gp}
+- Net Income: {ni}
+"""
+                quarterly_trends.append(quarter_info)
 
-            lines = [
-                f"Ticker: {ticker.upper()}",
-                f"Company: {long_name}",
-                f"Sector / Industry: {sector} / {industry}",
-                f"P/E: {pe_ratio}",
-                f"P/B: {pb_ratio}",
-                f"ROE: {roe}",
-                f"ROA: {roa}",
-                f"Profit Margin: {profit_margin}",
-                f"EPS (ttm): {eps}",
-                f"Debt‑to‑Equity: {de_ratio if pd.notna(de_ratio) else 'N/A'}",  # type: ignore[arg‑type]
-                f"EV/EBITDA: {evebitda}",
-                "\nLAST 4 QUARTERS:",
-                *quarterly_trends,
-            ]
+            return f"""📊 Stock Symbol: {ticker}
+Company Name: {full_name}
+Sector: {sector}
+Industry: {industry}
+P/E Ratio: {pe_ratio}
+P/B Ratio: {pb_ratio}
+ROE: {roe}
+ROA: {roa}
+Profit Margin: {profit_margin}
+EPS: {eps}
+D/E Ratio: {de}
+EV/EBITDA: {evebitda}
 
-            return "\n".join(lines)
-        except Exception as exc:  # pragma: no cover – generic catch for tool
-            return f"Error fetching fundamental data: {exc}"
-
-
-###############################################################################
-# ─────────────────────────── Technical data tool ─────────────────────────── #
-###############################################################################
+📈 LATEST 4 QUARTERS TREND:
+{''.join(quarterly_trends)}
+"""
+        except Exception as e:
+            return f"Error retrieving data: {e}"
 
 
+# US Technical Data Tool
 class USTechDataTool(BaseTool):
     """Compute common technical indicators for a U.S. equity using yfinance."""
 
@@ -132,11 +117,11 @@ class USTechDataTool(BaseTool):
 
     def _run(self, ticker: str) -> str:
         try:
-            end = datetime.utcnow()
-            start = end - timedelta(days=500)  # ensure ≥200 candles
+            end = datetime.now()
+            start = end - timedelta(days=500)  
 
             df = yf.download(
-                ticker.upper(),
+                ticker,
                 start=start,
                 end=end,
                 interval="1d",
@@ -153,41 +138,51 @@ class USTechDataTool(BaseTool):
 
             df = df.rename(columns=str.lower)
 
-            tech = self._calc_indicators(df)
-            s_r = self._support_resistance(df)
+            tech = self.calc_indicators(df)
+            s_r = self.support_resistance(df)
 
-            current = df["close"].iloc[-1]
-            recent = df["close"].iloc[-5:-1]
-            last = tech.iloc[-1]
+            current_price = df["close"].iloc[-1]
+            recent_prices = df["close"].iloc[-5:-1]
+            ind = tech.iloc[-1]
 
-            out = [
-                f"📈 Ticker: {ticker.upper()}",
-                f"Current Price: ${current:,.2f}",
-                "\nRECENT CLOSES:",
-                *(f"  • T‑{i}: ${p:,.2f}" for i, p in enumerate(recent[::-1], 1)),
-                "\nLATEST INDICATORS:",
-                f"  SMA(20): {last['SMA_20']:.2f}",
-                f"  SMA(50): {last['SMA_50']:.2f}",
-                f"  SMA(200): {last['SMA_200']:.2f}",
-                f"  EMA(12): {last['EMA_12']:.2f}",
-                f"  EMA(26): {last['EMA_26']:.2f}",
-                f"  RSI(14): {last['RSI_14']:.2f}",
-                f"  MACD: {last['MACD']:.2f}",
-                f"  MACD Signal: {last['MACD_Signal']:.2f}",
-                f"  MACD Hist: {last['MACD_Hist']:.2f}",
-                f"  Bollinger Upper: {last['BB_Upper']:.2f}",
-                f"  Bollinger Middle: {last['BB_Middle']:.2f}",
-                f"  Bollinger Lower: {last['BB_Lower']:.2f}",
-                "\nSUPPORT / RESISTANCE:",
-                s_r,
-            ]
-            return "\n".join(out)
+            tech_interpretation = self.get_technical_analysis(ind, current_price)
+
+            result = f"""\n📈 Stock Symbol: {ticker.upper()}
+Current Price: ${current_price:,.2f}
+
+RECENT CLOSING PRICES:
+- T-1: ${recent_prices.iloc[-1]:,.2f}
+- T-2: ${recent_prices.iloc[-2]:,.2f}
+- T-3: ${recent_prices.iloc[-3]:,.2f}
+- T-4: ${recent_prices.iloc[-4]:,.2f}
+
+TECHNICAL INDICATORS (latest):
+- SMA (20):  ${ind['SMA_20']:,.2f}
+- SMA (50):  ${ind['SMA_50']:,.2f}
+- SMA (200): ${ind['SMA_200']:,.2f}
+- EMA (12):  ${ind['EMA_12']:,.2f}
+- EMA (26):  ${ind['EMA_26']:,.2f}
+- RSI (14):  {ind['RSI_14']:.2f}
+- MACD:       {ind['MACD']:.2f}
+- MACD Signal:{ind['MACD_Signal']:.2f}
+- MACD Hist.: {ind['MACD_Hist']:.2f}
+- Bollinger Upper:  ${ind['BB_Upper']:,.2f}
+- Bollinger Middle: ${ind['BB_Middle']:,.2f}
+- Bollinger Lower:  ${ind['BB_Lower']:,.2f}
+
+SUPPORT & RESISTANCE:
+{s_r}
+
+TECHNICAL INTERPRETATION:
+{tech_interpretation}
+"""
+            return result
 
         except Exception as exc:
             return f"❌ Error fetching technical data: {exc}"
 
     @staticmethod
-    def _calc_indicators(df: pd.DataFrame) -> pd.DataFrame:
+    def calc_indicators(df: pd.DataFrame) -> pd.DataFrame:
         data = df.copy()
 
         # Moving Averages
@@ -221,7 +216,7 @@ class USTechDataTool(BaseTool):
         return data
 
     @staticmethod
-    def _support_resistance(df: pd.DataFrame, window: int = 10, thresh: float = 0.03) -> str:
+    def support_resistance(df: pd.DataFrame, window: int = 10, thresh: float = 0.03) -> str:
         data = df.copy()
 
         data["local_max"] = data["high"].rolling(window=window, center=True).apply(
@@ -251,16 +246,364 @@ class USTechDataTool(BaseTool):
         supp = [s for s in sorted(cluster(lows), reverse=True) if s < current][:3]
 
         out = []
-        out.extend(f"  • R{i}: ${lvl:,.2f}" for i, lvl in enumerate(resist, 1))
+        out.extend(f"- R{i}: ${lvl:,.2f}" for i, lvl in enumerate(resist, 1))
         if not resist:
-            out.append("  • (no significant resistance found)")
-        out.extend(f"  • S{i}: ${lvl:,.2f}" for i, lvl in enumerate(supp, 1))
+            out.append("- (no significant resistance found)")
+        out.extend(f"- S{i}: ${lvl:,.2f}" for i, lvl in enumerate(supp, 1))
         if not supp:
-            out.append("  • (no significant support found)")
+            out.append("- (no significant support found)")
+        return "\n".join(out)
+    
+    @staticmethod
+    def get_technical_analysis(ind: pd.Series, current: float) -> str:
+        out = []
+
+        if current > ind["SMA_200"] and ind["SMA_50"] > ind["SMA_200"]:
+            out.append("- Long-term trend: BULLISH")
+        elif current < ind["SMA_200"] and ind["SMA_50"] < ind["SMA_200"]:
+            out.append("- Long-term trend: BEARISH")
+        else:
+            out.append("- Long-term trend: NEUTRAL")
+
+        if current > ind["SMA_20"] and ind["SMA_20"] > ind["SMA_50"]:
+            out.append("- Short-term trend: BULLISH")
+        elif current < ind["SMA_20"] and ind["SMA_20"] < ind["SMA_50"]:
+            out.append("- Short-term trend: BEARISH")
+        else:
+            out.append("- Short-term trend: NEUTRAL")
+
+        if ind["RSI_14"] > 70:
+            out.append("- RSI: OVERBOUGHT (>70)")
+        elif ind["RSI_14"] < 30:
+            out.append("- RSI: OVERSOLD (<30)")
+        else:
+            out.append(f"- RSI: NEUTRAL ({ind['RSI_14']:.2f})")
+
+        out.append("- MACD: BULLISH" if ind["MACD"] > ind["MACD_Signal"] else "• MACD: BEARISH")
+
+        if current > ind["BB_Upper"]:
+            out.append("- Bollinger: OVERBOUGHT (above upper band)")
+        elif current < ind["BB_Lower"]:
+            out.append("- Bollinger: OVERSOLD (below lower band)")
+        else:
+            pct = (current - ind["BB_Lower"]) / (ind["BB_Upper"] - ind["BB_Lower"])
+            if pct > 0.8:
+                out.append("- Bollinger: Near overbought zone")
+            elif pct < 0.2:
+                out.append("- Bollinger: Near oversold zone")
+            else:
+                out.append("- Bollinger: Neutral zone")
+
         return "\n".join(out)
 
+# Empty Input for US Sector Valuation Tool
+class EmptyInput(BaseModel):
+    """No input required for US Sector Valuation Tool."""
+    pass
+
+# US Sector Valuation Tool
+class USSectorValuationTool(BaseTool):
+    name: str = "US Sector Valuation Scraper"
+    description: str = (
+        "Fetches current average P/E and P/B ratios for US market sectors "
+        "using ETF proxies via yfinance, and saves the result as JSON."
+    )
+    args_schema: Type[BaseModel] = EmptyInput
+
+    def _run(self) -> str:
+        sector_etfs = {
+            "Technology": "XLK",
+            "Financials": "XLF",
+            "Health Care": "XLV",
+            "Consumer Discretionary": "XLY",
+            "Consumer Staples": "XLP",
+            "Industrials": "XLI",
+            "Energy": "XLE",
+            "Materials": "XLB",
+            "Utilities": "XLU",
+            "Real Estate": "XLRE",
+            "Communication Services": "XLC",
+            "Banking": "KBE",
+            "Semiconductors": "SOXX",
+            "Biotechnology": "IBB",
+            "Aerospace & Defense": "ITA",
+            "Retail": "XRT",
+            "Metals & Mining": "XME",
+            "Oil & Gas Exploration": "XOP",
+            "Clean Energy": "ICLN",
+            "Agribusiness": "MOO",
+            "Transportation": "IYT",
+            "Infrastructure": "PAVE"
+        }
+
+        def try_convert_to_float(value: Optional[float]) -> Optional[float]:
+            try:
+                return float(value) if value is not None else None
+            except (ValueError, TypeError):
+                return None
+
+        def get_sector_ratios(etf_symbol: str) -> Dict[str, Optional[float]]:
+            etf = yf.Ticker(etf_symbol)
+            info = etf.info
+            return {
+                "P/E": try_convert_to_float(info.get("trailingPE")),
+                "P/B": try_convert_to_float(info.get("priceToBook"))
+            }
+
+        result = {}
+        for sector, symbol in sector_etfs.items():
+            print(f"🔍 Fetching {sector} ({symbol})...")
+            result[sector] = get_sector_ratios(symbol)
+
+        json_output = json.dumps(result, indent=4)
+        with open("us_sector_valuation.json", "w") as f:
+            f.write(json_output)
+
+        return f"✅ Sector valuation data saved to 'us_sector_valuation.json'\n{json_output}"
 
 
+
+# Stock Price Line Chart Input
+class PriceChartInput(USStockInput):
+    period: str = Field("6mo", description="Look-back window (1mo, 3mo, 6mo, 1y, etc.)")
+    interval: str = Field("1d", description="Bar size (1d, 1wk, 1mo)")
+
+# Stock Price Line Chart Tool
+class StockPriceLineChartTool(BaseTool):
+    name: str = "Stock price line chart (US)"
+    description: str = "Draws and saves a line chart of close-price history."
+    args_schema: Type[BaseModel] = PriceChartInput
+
+    def _run(self, ticker: str, period: str = "6mo", interval: str = "1d") -> str:
+        df = yf.download(ticker.upper(), period=period, interval=interval, progress=False)
+        if df.empty:
+            return f"❌ No data for {ticker}."
+
+        fig, ax = plt.subplots(figsize=(10, 5))
+        ax.plot(df.index, df["Close"])
+        ax.set(title=f"{ticker.upper()} close – last {period}",
+               xlabel="Date", ylabel="Price (USD)")
+        # ax.grid(True, ls="--", alpha=.5)
+        outfile = f"{ticker.upper()}_price_line.jpg"
+        plt.tight_layout(); plt.savefig(outfile, dpi=300); plt.close(fig)
+        return outfile
+
+# Revenue Bar Chart Input
+class RevenueChartInput(USStockInput):
+    freq: Literal["annual", "quarterly"] = Field("annual", description="Use annual or quarterly statement")
+
+# Revenue Bar Chart Tool
+class RevenueBarChartTool(BaseTool):
+    name: str = "Revenue bar chart (US)"
+    description: str = "Builds a bar chart of the last 4 revenues (annual/quarterly)."
+    args_schema: Type[BaseModel] = RevenueChartInput
+
+    def _run(self, ticker: str, freq: str = "annual") -> str:
+        fin = yf.Ticker(ticker.upper())
+        stmt = fin.financials if freq == "annual" else fin.quarterly_financials
+        if stmt.empty:
+            return f"❌ No {freq} income statement for {ticker}."
+
+        key = "Total Revenue" if "Total Revenue" in stmt.index else "Revenue"
+        revenue = stmt.loc[key].dropna().iloc[:4][::-1]  
+
+        fig, ax = plt.subplots(figsize=(8, 4))
+        labels = (revenue.index.year.astype(str) if freq == "annual"
+                  else revenue.index.strftime("%Y-%m"))
+        ax.bar(labels, revenue/1e9)  # USD bn
+        ax.set(title=f"{ticker.upper()} {freq.title()} revenue",
+               ylabel="USD (billions)")
+        # ax.grid(axis="y", ls="--", alpha=.5)
+        outfile = f"{ticker.upper()}_revenue_bar.jpg"
+        plt.tight_layout(); plt.savefig(outfile, dpi=300); plt.close(fig)
+        return outfile
+
+# Market Share All Peers Input
+class MarketShareAllPeersInput(USStockInput):
+    """Ticker is required and API key must be provided."""
+    api_key: Optional[str] = Field(
+        None,
+        description="Finnhub API key",
+    )
+
+class MarketShareAllPeersDonutTool(BaseTool):
+    """Plot a donut chart of <ticker> vs **all** peers returned by Finnhub."""
+
+    name: str = "Market share donut chart (all peers)"
+    description: str = (
+        "Fetches the full peer list from Finnhub for a U.S. ticker, gets each "
+        "company’s market cap via Yahoo Finance, and draws a donut whose legend "
+        "shows labels in the form 'SYM (xx.x %)'."
+    )
+    args_schema: Type[BaseModel] = MarketShareAllPeersInput
+
+    _PEER_URL = "https://finnhub.io/api/v1/stock/peers"
+
+    
+    def _run(self, ticker: str, api_key: Optional[str] = None) -> str:
+        api_key = os.getenv("FINHUB_API_KEY")
+        if not api_key:
+            return "❌ Finnhub API key not supplied (arg or FINNHUB_API_KEY env)."
+
+        # peer symbols from Finnhub
+        try:
+            resp = requests.get(
+                self._PEER_URL,
+                params={"symbol": ticker.upper(), "token": api_key},
+                timeout=8,
+            )
+            resp.raise_for_status()
+            peers: list[str] = resp.json() or []
+        except Exception as exc:
+            return f"❌ Finnhub peers API error: {exc}"
+
+        symbols = list({ticker.upper(), *peers})           
+
+        # market caps via yfinance 
+        caps: dict[str, int] = {}
+        for sym in symbols:
+            try:
+                cap = yf.Ticker(sym).info.get("marketCap")
+                if cap:
+                    caps[sym] = cap
+            except Exception:
+                continue
+
+        if len(caps) < 2:
+            return f"❌ Not enough market-cap data for {ticker} and peers."
+
+        # extract target, keep peers separate
+        target_cap = caps.pop(ticker.upper(), None)
+        if target_cap is None:                         
+            target_cap, _ = caps.popitem()
+
+        labels_syms = [ticker.upper(), *caps.keys()]
+        sizes       = [target_cap,     *caps.values()]
+        total       = sum(sizes)
+
+        # legend labels “SYM (xx.x %)” 
+        legend_labels = [
+            f"{sym} ({100 * val / total:.1f} %)" for sym, val in zip(labels_syms, sizes)
+        ]
+
+        # plot donut 
+        fig, ax = plt.subplots(figsize=(7, 7))
+        wedges, _ = ax.pie(
+            sizes,
+            wedgeprops=dict(width=0.35),
+            startangle=90,
+            labels=None,               
+        )
+        ax.set(
+            aspect="equal",
+            title=f"{ticker.upper()} vs ALL peers\nMarket-cap share",
+        )
+
+        # legend 
+        ax.legend(
+            wedges,
+            legend_labels,
+            title="Market share",
+            loc="center left",
+            bbox_to_anchor=(1.02, 0.5),
+            fontsize=8,
+        )
+
+        outfile = f"{ticker.upper()}_market_share_all.jpg"
+        plt.tight_layout()
+        plt.savefig(outfile, dpi=300)
+        plt.close(fig)
+        return outfile
+
+
+class FilePathInput(BaseModel):
+    """A single markdown file (absolute or relative) plus an optional CSS file."""
+    path: str = Field(..., description="Path to a Markdown file to convert")
+    css: str | None = Field(
+        default=None,
+        description="Optional CSS file; if omitted, a default stylesheet is used",
+    )
+
+    
+    @field_validator("path")
+    def file_must_exist(cls, v: str) -> str:   
+        if not Path(v).is_file():
+            raise FileNotFoundError(f"Markdown file not found: {v}")
+        return v
+
+
+class HTMLStringInput(BaseModel):
+    """Raw HTML string and a target PDF filename."""
+    html: str = Field(..., description="Already-rendered HTML to print to PDF")
+    out: str = Field(
+        ..., description="Output PDF path (e.g. 'section1.pdf' or 'report.pdf')"
+    )
+
+
+class MergeListInput(BaseModel):
+    """List of PDFs to combine and a destination filename."""
+    files: List[str] = Field(..., description="PDF paths in the order to merge")
+    out: str = Field(..., description="Destination PDF (e.g. 'final_report.pdf')")
+
+    @field_validator("files")
+    def all_paths_exist(cls, v: List[str]) -> List[str]:     
+        missing = [f for f in v if not Path(f).is_file()]
+        if missing:
+            raise FileNotFoundError(f"Missing PDFs for merge: {', '.join(missing)}")
+        return v
+
+class MarkdownRenderTool(BaseTool):
+    """Convert Markdown to HTML with heading fixes & CSS link."""
+    name: str = "Markdown → HTML"
+    description: str = (
+        "Convert a Markdown file to raw HTML (tables, fenced code, sane lists)."
+    )
+    args_schema: Type[BaseModel] = FilePathInput
+
+    def _run(self, path: str, css: str = "report.css") -> str:
+        import markdown, pathlib
+        txt = pathlib.Path(path).read_text(encoding="utf-8")
+        html = markdown.markdown(txt, extensions=["tables", "fenced_code", "sane_lists"])
+        return f"<link rel='stylesheet' href='{css}'>{html}"
+
+class WeasyPrintTool(BaseTool):
+    """Turn HTML (string) into a standalone PDF using WeasyPrint."""
+    name: str = "HTML → PDF (WeasyPrint)"
+    description: str = "Render an HTML string to a PDF file using WeasyPrint."
+    args_schema: Type[BaseModel] = HTMLStringInput
+    def _run(self, html: str, out: str) -> str:
+        from weasyprint import HTML
+        HTML(string=html, base_url=".").write_pdf(out)
+        return out
+
+class ImageToPdfInput(BaseModel):
+    img_path: str = Field(..., description="Path to a JPEG/PNG file")
+    out: str      = Field(..., description="Output PDF filename")
+
+class ImageToPdfTool(BaseTool):
+    name: str = "Image → PDF"
+    description: str = "Embed a single image in HTML and export as a one-page PDF."
+    args_schema: Type[BaseModel] = ImageToPdfInput
+
+    def _run(self, img_path: str, out: str) -> str:   # names now match schema
+        from weasyprint import HTML
+        html = f"<img src='{img_path}' style='width:100%;'>"
+        HTML(string=html, base_url='.').write_pdf(out)
+        return out
+
+class PdfMergeTool(BaseTool):
+    """Merge multiple PDF files into one."""
+    name: str = "Merge PDFs"
+    description: str = "Concatenate multiple PDF files into a single document."
+    args_schema: Type[BaseModel] = MergeListInput
+    def _run(self, files: list[str], out: str) -> str:
+        from pypdf import PdfReader, PdfWriter
+        writer = PdfWriter()
+        for f in files:
+            for page in PdfReader(f).pages:
+                writer.add_page(page)
+        writer.write(out); writer.close()
+        return out
 
 class FileReadToolSchema(BaseModel):
     """Input for FileReadTool."""
@@ -350,4 +693,26 @@ class FileReadTool(BaseTool):
         except PermissionError:
             return f"Error: Permission denied when trying to read file: {file_path}"
         except Exception as e:
-            return f"Error: Failed to read file {file_path}. {str(e)}"
+            return f"Error: Failed to read file {file_path}. {str(e)}" 
+
+
+# if __name__ == "__main__":
+#     # Example usage of the tools
+#     fund_tool = USFundDataTool()
+#     print(fund_tool.run(ticker="AAPL"))
+
+#     tech_tool = USTechDataTool()
+#     print(tech_tool.run(ticker="AAPL"))
+
+#     price_chart_tool = StockPriceLineChartTool()
+#     print(price_chart_tool.run(ticker="AAPL", period="1y", interval="1d"))
+
+#     revenue_chart_tool = RevenueBarChartTool()
+#     print(revenue_chart_tool.run(ticker="AAPL", freq="quarterly"))
+
+#     market_share_tool = MarketShareAllPeersDonutTool()
+#     print(market_share_tool.run(ticker="AAPL", api_key="YOUR_FINNHUB_API_KEY"))
+
+
+#     valuation_tool = USSectorValuationTool()
+#     print(valuation_tool.run())

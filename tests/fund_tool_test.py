@@ -5,6 +5,7 @@ def fund_data_tool_us(symbol: str) -> str:
     try:
         stock = yf.Ticker(symbol)
         info = stock.info
+        print(info)
 
         # Company info
         full_name = info.get("longName", "N/A")
@@ -68,7 +69,7 @@ EV/EBITDA: {evebitda}
 def test_fund_data_tool_us():
     # Valid example: Apple Inc.
     print("Test result for AAPL:")
-    print(fund_data_tool_us("MSFT"))
+    print(fund_data_tool_us("TSLA"))
 
     # Invalid symbol
     print("\nTest result for INVALID:")

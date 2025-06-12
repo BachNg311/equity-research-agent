@@ -1,0 +1,90 @@
+{
+    "Technology": {
+        "P/E": 34.15642,
+        "P/B": 1.6037629
+    },
+    "Financials": {
+        "P/E": 16.763565,
+        "P/B": 1.4992504
+    },
+    "Health Care": {
+        "P/E": 25.689209,
+        "P/B": 1.0541742
+    },
+    "Consumer Discretionary": {
+        "P/E": 25.781635,
+        "P/B": 1.2731115
+    },
+    "Consumer Staples": {
+        "P/E": 22.942205,
+        "P/B": 1.1965913
+    },
+    "Industrials": {
+        "P/E": 24.179909,
+        "P/B": 1.4718139
+    },
+    "Energy": {
+        "P/E": 14.9050665,
+        "P/B": 1.603569
+    },
+    "Materials": {
+        "P/E": 25.416231,
+        "P/B": 1.1169958
+    },
+    "Utilities": {
+        "P/E": 20.13374,
+        "P/B": 1.2606657
+    },
+    "Real Estate": {
+        "P/E": 35.3334,
+        "P/B": null
+    },
+    "Communication Services": {
+        "P/E": 19.079935,
+        "P/B": null
+    },
+    "Banking": {
+        "P/E": 12.025475,
+        "P/B": null
+    },
+    "Semiconductors": {
+        "P/E": 30.820229,
+        "P/B": 0.524556
+    },
+    "Biotechnology": {
+        "P/E": 20.777512,
+        "P/B": 0.7893467
+    },
+    "Aerospace & Defense": {
+        "P/E": 35.27789,
+        "P/B": null
+    },
+    "Retail": {
+        "P/E": 14.629442,
+        "P/B": 0.8722462
+    },
+    "Metals & Mining": {
+        "P/E": 17.281437,
+        "P/B": 1.5190462
+    },
+    "Oil & Gas Exploration": {
+        "P/E": 10.255341,
+        "P/B": 1.2845639
+    },
+    "Clean Energy": {
+        "P/E": 18.129896,
+        "P/B": null
+    },
+    "Agribusiness": {
+        "P/E": 20.218533,
+        "P/B": 0.7663032
+    },
+    "Transportation": {
+        "P/E": 16.408981,
+        "P/B": 0.24855037
+    },
+    "Infrastructure": {
+        "P/E": 22.867,
+        "P/B": null
+    }
+}

@@ -177,7 +177,7 @@ def get_technical_analysis(ind, current):
 # ────────────────────────── Simple test ─────────────────────────
 def test_tech_data_tool():
     print("🧪 Testing with MSFT:")
-    print(tech_data_tool("MSFT"))
+    print(tech_data_tool("AAPL"))
 
     print("\n🧪 Testing with INVALID:")
     print(tech_data_tool("INVALID"))

@@ -1,7 +1,7 @@
 import yfinance as yf
 import json
 
-# Sector ETFs to represent US industry sectors
+
 sector_etfs = {
     "Technology": "XLK",
     "Financials": "XLF",
@@ -13,7 +13,18 @@ sector_etfs = {
     "Materials": "XLB",
     "Utilities": "XLU",
     "Real Estate": "XLRE",
-    "Communication Services": "XLC"
+    "Communication Services": "XLC",
+    "Banking": "KBE",                 
+    "Semiconductors": "SOXX",        
+    "Biotechnology": "IBB",          
+    "Aerospace & Defense": "ITA",    
+    "Retail": "XRT",                 
+    "Metals & Mining": "XME",        
+    "Oil & Gas Exploration": "XOP",  
+    "Clean Energy": "ICLN",          
+    "Agribusiness": "MOO",           
+    "Transportation": "IYT",         
+    "Infrastructure": "PAVE"        
 }
 
 def try_convert_to_float(value):
