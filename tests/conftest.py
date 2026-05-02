@@ -18,6 +18,8 @@ os.environ.setdefault("MODEL_REASONING", "gemini/gemini-1.5-pro")
 os.environ.setdefault("SERPER_API_KEY", "test-dummy-key")
 os.environ.setdefault("FIRECRAWL_API_KEY", "test-dummy-key")
 os.environ.setdefault("FINNHUB_API_KEY", "test-dummy-key")
+# ANTHROPIC_API_KEY is required only for @pytest.mark.judge tests (LLM-as-judge)
+os.environ.setdefault("ANTHROPIC_API_KEY", "test-dummy-key")
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SRC_DIR = PROJECT_ROOT / "src"

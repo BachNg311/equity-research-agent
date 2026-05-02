@@ -1,11 +1,11 @@
 """Layer 4: LLM-as-judge for qualitative grading.
 
-Uses MODEL_REASONING (typically a stronger model) to grade outputs from
-agents that ran on MODEL (typically a faster model). Different models
-reduce self-bias.
+Judge model: Claude Sonnet 4.6 (different provider from Gemini generators).
+Using a different provider eliminates cross-model self-bias — same-provider
+judges systematically inflate scores for their own family's outputs.
 
-Tests using this should be marked @pytest.mark.judge so they can be
-opted in: pytest -m judge.
+Requires ANTHROPIC_API_KEY in .env.
+Tests using this should be marked @pytest.mark.judge: pytest -m judge.
 """
 from __future__ import annotations
 import json
@@ -32,24 +32,36 @@ Return ONLY valid JSON in this exact form, no prose:
 
 CRITERIA = ["relevance", "completeness", "coherence", "groundedness"]
 
+# Claude Sonnet 4.6 — strong reasoning, cost-effective, different provider from Gemini generators.
+# Switch to claude-opus-4-7 for highest judgment quality (higher cost).
+JUDGE_MODEL = "claude-sonnet-4-6"
+
 
 def judge(agent_role: str, ticker: str, output: str) -> dict[str, Any]:
-    """Grade `output` and return scores dict, or empty dict on failure."""
-    from crewai import LLM
+    """Grade `output` with Claude and return scores dict, or error dict on failure."""
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        return {"_error": "ANTHROPIC_API_KEY not set"}
 
-    model = os.environ.get("MODEL_REASONING") or os.environ.get("MODEL")
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not model or not api_key:
-        return {}
+    try:
+        import anthropic
+    except ImportError:
+        return {"_error": "anthropic package not installed: pip install anthropic"}
 
-    llm = LLM(model=model, api_key=api_key, temperature=0, max_tokens=512)
+    client = anthropic.Anthropic(api_key=api_key)
     truncated = output[:8000]
     prompt = JUDGE_PROMPT.format(agent_role=agent_role, ticker=ticker, output=truncated)
 
     try:
-        raw = llm.call([{"role": "user", "content": prompt}])
+        message = client.messages.create(
+            model=JUDGE_MODEL,
+            max_tokens=512,
+            temperature=0,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        raw = message.content[0].text
     except Exception as e:
-        return {"_error": f"LLM call failed: {e}"}
+        return {"_error": f"Claude API call failed: {e}"}
 
     m = re.search(r"\{.*\}", raw, re.DOTALL)
     if not m:
