@@ -5,3 +5,5 @@ db/
 TODO.md
 venv/
 .venv/
+.pytest_cache/
+tests/.test_cache/

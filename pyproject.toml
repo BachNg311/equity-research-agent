@@ -15,6 +15,14 @@ dependencies = [
     "yfinance",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-xdist>=3.5",
+    "pytest-mock>=3.14",
+    "httpx>=0.27",
+]
+
 [project.scripts]
 stock_advisor = "stock_advisor.main:run"
 run_crew = "stock_advisor.main:run"
@@ -28,3 +36,12 @@ build-backend = "hatchling.build"
 
 [tool.crewai]
 type = "crew"
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: real LLM pipeline run (requires API keys; slow + costs tokens)",
+    "network: hits external HTTP endpoints (URL reachability checks)",
+    "judge: LLM-as-judge qualitative grading (extra LLM calls)",
+]
+testpaths = ["tests"]
+addopts = "-ra"
